@@ -360,3 +360,32 @@ func TestSendStatusFailureBeatsBodyCode(t *testing.T) {
 		t.Errorf("DriverCode() = %q, want the HTTP status", typed.DriverCode())
 	}
 }
+
+// The template dot is model.Message, which is the documented rendering context for every
+// channel in this family: payload mirrors its field names, so the same expressions work,
+// while the Extra* helpers only exist on Message.
+func TestSendTemplateRendersAgainstMessage(t *testing.T) {
+	srv, got := recorder(200, "")
+	defer srv.Close()
+	client := clientFor(t, srv, map[string]string{
+		Template: `{{.Level}}|{{.Title}}|{{index .Recipients 0}}|{{range .Vars}}{{.Key}}={{.Value}};{{end}}|{{.ExtraString "kind"}}`,
+	})
+
+	err := client.Send(context.Background(), model.Message{
+		Title:      "磁盘",
+		Text:       "已用 ${pct}%",
+		Level:      model.LevelWarn,
+		Format:     model.FormatMarkdown,
+		Recipients: []string{"ops@example.net"},
+		Vars:       model.Vars{{Key: "pct", Value: "92"}},
+		Extras:     map[string]any{"kind": "disk"},
+	})
+	if err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+
+	const want = "warn|磁盘|ops@example.net|pct=92;|disk"
+	if got.body != want {
+		t.Errorf("body = %q, want %q", got.body, want)
+	}
+}

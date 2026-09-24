@@ -40,8 +40,11 @@ func (c Client) Send(ctx context.Context, msg model.Message) error {
 
 	var body []byte
 	if c.Body != nil {
+		// The dot is model.Message, the one documented rendering context across this
+		// family: payload mirrors its field names, so a template written against either
+		// reads the same, and Message additionally exposes its Extra* helpers.
 		var buf bytes.Buffer
-		if err := c.Body.Execute(&buf, payload); err != nil {
+		if err := c.Body.Execute(&buf, msg); err != nil {
 			return errors.ErrDriverSendFailed.
 				WithDriverName(Name).
 				WithDriverMessage("template: " + err.Error())

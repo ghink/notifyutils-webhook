@@ -56,7 +56,10 @@ receiver needs for substitution. Use it to key your own template, or ignore it.
 
 `title`, `format`, `level`, `recipients`, `template` and `vars` are omitted when empty, and
 `extras` is included only when the message carries some. The Go type behind this shape is
-exported as `webhook.Payload`, which is also what a `template` is executed against:
+exported as `webhook.Payload`; a `template` is executed against **`model.Message`** instead,
+whose field names match one for one, so `{{.Title}}`, `{{.Text}}`, `{{.Level}}`,
+`{{.Recipients}}` and `{{range .Vars}}{{.Key}}{{.Value}}{{end}}` read the same either way.
+`model.Message` additionally answers `{{.ExtraString "k"}}` and its sibling helpers:
 
 ```go
 credential := map[string]string{
@@ -69,6 +72,12 @@ credential := map[string]string{
 
 Because `Extras` is `map[string]any` with driver-defined contents, a template that walks it is
 coupled to whatever the sending code put there; prefer the typed fields.
+
+Text inside a template is inserted **raw**: the driver does not quote or escape what `{{...}}`
+produces, so a body meant to be JSON either has to keep interpolated values free of quotes and
+newlines, or build the document out of fields the endpoint tolerates. `notifyutils-lark` offers a
+`{{json …}}` helper for exactly that case; a generic endpoint usually renders plain text or a
+form body and needs nothing of the kind.
 
 ## Signing
 
